@@ -12,6 +12,7 @@ namespace TaskSchedular.CronJob
     {
         public async Task Execute(IJobExecutionContext context)
         {
+            await Console.Out.WriteLineAsync("----------------------------------------------------------------------------------------------------------");
           
             var db = new AppDBContext();
             var compaignId = Convert.ToInt32(context.MergedJobDataMap.Get("CompaignId"));

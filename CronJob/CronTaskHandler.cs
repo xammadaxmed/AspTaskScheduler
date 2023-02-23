@@ -21,8 +21,9 @@ namespace TaskSchedular.CronJob
         }
 
         public async Task  Run() {
-
-            await Console.Out.WriteAsync("\n CronJob Background service running \n");
+            Console.WriteLine("----------------------------------------------------------------------------------------------------------");
+            await Console.Out.WriteLineAsync("CronJob Background service running");
+            Console.WriteLine("----------------------------------------------------------------------------------------------------------");
             var db = new AppDBContext();
             StdSchedulerFactory factory = new StdSchedulerFactory();
             IScheduler scheduler = await factory.GetScheduler();
@@ -40,7 +41,7 @@ namespace TaskSchedular.CronJob
                 IJobDetail job = JobBuilder.Create<LeadSender>()
                   .WithIdentity(jobId, "group1")
                   .UsingJobData("CompaignId",compeign.Id)
-                  //.StoreDurably(true)
+                  .StoreDurably(true)
                   .Build();
 
                 ITrigger trigger = TriggerBuilder.Create()
