@@ -11,7 +11,8 @@ namespace TaskSchedular.CronJob
 {
     public class CronTaskHandler
     {
-        public CronTaskHandler() { }
+        public CronTaskHandler() { 
+        }
         private int CalculateInerval(int noJobs)
         {
             var timeFor1JobInHours = 1.0 / noJobs;
