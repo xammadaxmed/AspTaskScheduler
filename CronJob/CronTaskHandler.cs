@@ -28,33 +28,34 @@ namespace TaskSchedular.CronJob
             await scheduler.Start();
             await scheduler.Clear();
 
-            var compeigns = db.Campaigns.ToList();
+            var compeigns = db.Campaigns.ToList().OrderByDescending(a=>a.Id).Where(a=> Convert.ToInt32(a.leadperday) >= Convert.ToInt32(a.asignedtoday));
 
             foreach (var compeign in compeigns )
             {
                 var interval = CalculateInerval(Convert.ToInt32(compeign.deliverythrottle));
-                var jobId = "JOB:"+compeign.Id+"_INTERVAL:"+ interval.ToString()+" Sec";
+                var jobId = "JOB:"+compeign.Id+"-INTERVAL:"+ interval.ToString()+" Sec";
                 var triggerId = "TRIGGER_" + compeign.Id + "_" + Guid.NewGuid().ToString();
 
                 IJobDetail job = JobBuilder.Create<LeadSender>()
                   .WithIdentity(jobId, "group1")
-                  .UsingJobData("CompaignData",JsonSerializer.Serialize(compeign))
-                  .StoreDurably(true)
+                  .UsingJobData("CompaignId",compeign.Id)
+                  //.StoreDurably(true)
                   .Build();
 
                 ITrigger trigger = TriggerBuilder.Create()
                 .WithIdentity(triggerId, "group1")
                 .StartNow()
                 .ForJob(job)
-                .WithSimpleSchedule(x => x
-                    .WithIntervalInSeconds(interval))
-                .Build();
+                .WithSimpleSchedule(x =>{
+                    x.WithIntervalInSeconds(interval);
+                    x.RepeatForever();
+
+                }) .Build();
 
                 await scheduler.ScheduleJob(job, trigger);
 
             }
 
-             ((IDisposable)db).Dispose();
 
         }
     }

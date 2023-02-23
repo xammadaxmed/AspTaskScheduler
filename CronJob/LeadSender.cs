@@ -14,31 +14,46 @@ namespace TaskSchedular.CronJob
         {
           
             var db = new AppDBContext();
-            var jsonData = context.MergedJobDataMap.Get("CompaignData").ToString();
-            if (jsonData != null)
-            {
-                var CompaignData = JsonConvert.DeserializeObject<Campaigns>(jsonData);
+            var compaignId = Convert.ToInt32(context.MergedJobDataMap.Get("CompaignId"));
 
+            
+
+
+            var CompaignData = db.Campaigns.Where(a => a.Id == compaignId && Convert.ToInt32(a.leadperday) >= Convert.ToInt32(a.asignedtoday)).FirstOrDefault();
                 if (CompaignData != null)
                 {
-                    var source =await db.source.Where(o => o.Name == CompaignData.sourcename).FirstOrDefaultAsync();
-                    var lead =await db.sourcelead.OrderByDescending(o => o.Id).Where(o => o.auth_key == source.auth_key && o.asignto == null && o.archieve != "false" && o.archieve != "Unverified" && o.esp == CompaignData.esp || o.esp == CompaignData.espa || o.esp == CompaignData.espb || o.esp == CompaignData.espc || o.esp == CompaignData.espd || o.esp == CompaignData.espe).FirstOrDefaultAsync();
 
-                    var emailJson = JsonConvert.SerializeObject(new
+
+                    var source =await db.source.Where(o => o.Name == CompaignData.sourcename).FirstOrDefaultAsync();
+                    var lead =await db.sourcelead.OrderByDescending(o => o.Id).Where(o => (o.auth_key == source.auth_key && o.asignto == null && o.archieve != "false" && o.archieve != "Unverified") && (o.esp == CompaignData.esp || o.esp == CompaignData.espa || o.esp == CompaignData.espb || o.esp == CompaignData.espc || o.esp == CompaignData.espd || o.esp == CompaignData.espe)).FirstOrDefaultAsync();
+                        var leadStatus = await db.sourcelead.FindAsync(Convert.ToInt32(lead.Id));
+                        leadStatus.asignto = CompaignData.campaignname;
+                        db.sourcelead.Update(leadStatus);
+                        await db.SaveChangesAsync();
+                var emailJson = JsonConvert.SerializeObject(new
                     {
                         ListId = "162513",
                         Email = lead.email
                     });
 
-                    var client = new RestClient("https://api.emailoversight.com/api/emailvalidation");
+                string strMessage = $"\n\n({context.JobDetail.Key.Name}) - LEAD:{lead.email} - Compaign:({CompaignData.campaignname}) - AssignedToday: {CompaignData.asignedtoday} - SRC:";
+
+                var client = new RestClient("https://api.emailoversight.com/api/emailvalidation");
                     var request = new RestRequest("https://api.emailoversight.com/api/emailvalidation", Method.Post);
                     request.AddHeader("accept", "application/json");
                     request.AddHeader("content-type", "application/json");
                     request.AddHeader("apitoken", Config.Get("OverSightEmailApiKey"));
                     request.AddParameter("application/json", emailJson, ParameterType.RequestBody);
-                    RestResponse response = await client.ExecuteAsync(request);
+                RestResponse response = await client.ExecuteAsync(request);
+                string resultss = "";
+
+                if(response.Content !=null)
+                {
                     dynamic responseObj = JsonConvert.DeserializeObject(response.Content);
-                    string resultss = responseObj.Result;
+                    resultss = responseObj.Result;
+                }
+
+                    
 
                     if (resultss == "Verified")
                     {
@@ -60,11 +75,16 @@ namespace TaskSchedular.CronJob
                                 srcLead.asignto = CompaignData.campaignname;
                                 db.sourcelead.Update(srcLead);
                                 await db.SaveChangesAsync();
+                                 Console.Out.WriteLine(strMessage+ "campaignrefin");
+                            }
+                            else
+                            {
+                                 Console.Out.WriteLine("ERROR:campaignrefin");
                             }
                         }
                         else if (CompaignData.destination.Substring(0, 25) == "https://api.sendinblue.co" || CompaignData.destination.Substring(0, 25) == "https://my.sendinblue.co")
                         {
-                            int[] apiListIds = { CompaignData.list_id.Value };
+                            int[] apiListIds = {Convert.ToInt32(CompaignData.list_id) };
                             List<int> listIds = apiListIds.ToList();
 
                             var json = JsonConvert.SerializeObject(new
@@ -108,8 +128,8 @@ namespace TaskSchedular.CronJob
                                     compaign.totalasign = (Convert.ToInt32(compaign.totalasign) + 1).ToString();
                                     db.Campaigns.Update(compaign);
                                     await db.SaveChangesAsync();
-                                    Console.WriteLine(compaign.campaignname + "asigntoday:" + (compaign.asignedtoday));
-                                }
+                                    Console.Out.WriteLine(strMessage + "sendinblue(1stblock)");
+                                 }
                                 else
                                 {
                                     var comp =await db.Campaigns.Where(x => x.Id == Convert.ToInt32(CompaignData.Id)).FirstOrDefaultAsync();
@@ -118,7 +138,8 @@ namespace TaskSchedular.CronJob
                                     comp.totalasign = (comp.totalasign + 1).ToString();
                                     db.Update(comp);
                                    await db.SaveChangesAsync();
-                                }
+                                     Console.Out.WriteLine(strMessage + "sendinblue(2ndblock)");
+                                 }
 
                             }
                             else
@@ -128,8 +149,9 @@ namespace TaskSchedular.CronJob
                                 srcLoad.archieve = "false";
                                 db.sourcelead.Update(srcLoad);
                                await db.SaveChangesAsync();
+                                 Console.Out.WriteLine("Lead Archived");
 
-                            }
+                             }
 
 
                         }
@@ -144,14 +166,12 @@ namespace TaskSchedular.CronJob
                         srcLoad.archieve = "Unverified";
                         db.sourcelead.Update(srcLoad);
                        await db.SaveChangesAsync();
+                    Console.Out.WriteLine(strMessage + "SKIPPING(UNVERIFIED)");
+
                     }
 
-                    var cmpn = await db.Campaigns.FirstOrDefaultAsync(a => a.Id == CompaignData.Id);
-                    await Console.Out.WriteAsync($"\n {cmpn.asignedtoday} Leads Assigned for {CompaignData.campaignname} Today \n");
+                  
 
-                    ((IDisposable)db).Dispose();
-
-                }
             }
         }
     }

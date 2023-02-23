@@ -8,6 +8,7 @@ namespace TaskSchedular.CronJob
     public class BootCronJobService : IJob
     {
         private readonly ILogger<BootCronJobService> _logger;
+
         public BootCronJobService(ILogger<BootCronJobService> logger)
         {
             _logger = logger;

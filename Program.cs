@@ -14,16 +14,18 @@ var services = builder.Services;
 
 services.AddQuartz(q =>
 {
-    q.UseMicrosoftDependencyInjectionJobFactory();
+q.UseMicrosoftDependencyInjectionJobFactory();
 
-    var jobKey = new JobKey("CRONJOBSERVICE_JOB");
-    q.AddJob<BootCronJobService>(opts => opts.WithIdentity(jobKey));
-    // Create a trigger for the job
-    q.AddTrigger(opts => opts
-        .ForJob(jobKey)
-        .WithIdentity("CRONJOBSERVICE_TRIGGER") // give the trigger a unique name
-        .WithDailyTimeIntervalSchedule(a => { a.WithIntervalInHours(1); }));
+var jobKey = new JobKey("CRONJOBSERVICE_JOB");
+q.AddJob<BootCronJobService>(opts => opts.WithIdentity(jobKey));
+// Create a trigger for the job
+q.AddTrigger(opts => opts
+    .ForJob(jobKey)
+    .WithIdentity("CRONJOBSERVICE_TRIGGER")
+    .StartNow()
+    .WithSimpleSchedule(a => { a.WithIntervalInHours(1); a.RepeatForever(); }));
 });
+
 services.AddQuartzHostedService(q =>
 {
     q.WaitForJobsToComplete = true;

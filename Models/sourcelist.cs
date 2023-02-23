@@ -10,8 +10,8 @@ namespace TaskSchedular.Models
     {
         [Key]
         public int Id { get; set; }
-        public string campaignname { get; set; }
-        public string sourcename { get; set; }
-        public string list { get; set; }
+        public string? campaignname { get; set; }
+        public string? sourcename { get; set; }
+        public string? list { get; set; }
     }
 }
