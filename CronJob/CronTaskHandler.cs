@@ -16,7 +16,7 @@ namespace TaskSchedular.CronJob
         private int CalculateInerval(int noJobs)
         {
             var timeFor1JobInHours = 1.0 / noJobs;
-            var timeInSeconds = timeFor1JobInHours * 3600;
+            var timeInSeconds = (double)(timeFor1JobInHours * 3600);
             return Convert.ToInt32(timeInSeconds);
         }
 
