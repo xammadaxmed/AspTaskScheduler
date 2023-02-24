@@ -5,6 +5,7 @@ using TaskSchedular.Helpers;
 using TaskSchedular.Models;
 using Microsoft.EntityFrameworkCore;
 using System.Data.SqlTypes;
+using System.Security.Permissions;
 
 namespace TaskSchedular.CronJob
 {
@@ -24,13 +25,22 @@ namespace TaskSchedular.CronJob
                 if (CompaignData != null)
                 {
 
+                    var source = db.source.Where(o => o.Name == CompaignData.sourcename).FirstOrDefault();
+            repeat:
+                     var lead = db.sourcelead.OrderByDescending(o => o.Id).Where(o => (o.auth_key == source.auth_key && o.asignto == null && o.archieve != "false" && o.archieve != "Unverified") && (o.esp == CompaignData.esp || o.esp == CompaignData.espa || o.esp == CompaignData.espb || o.esp == CompaignData.espc || o.esp == CompaignData.espd || o.esp == CompaignData.espe)).FirstOrDefault();
+                    lead.asignto = CompaignData.campaignname;
+                    db.sourcelead.Update(lead);
+                     db.SaveChanges();
 
-                    var source =await db.source.Where(o => o.Name == CompaignData.sourcename).FirstOrDefaultAsync();
-                    var lead =await db.sourcelead.OrderByDescending(o => o.Id).Where(o => (o.auth_key == source.auth_key && o.asignto == null && o.archieve != "false" && o.archieve != "Unverified") && (o.esp == CompaignData.esp || o.esp == CompaignData.espa || o.esp == CompaignData.espb || o.esp == CompaignData.espc || o.esp == CompaignData.espd || o.esp == CompaignData.espe)).FirstOrDefaultAsync();
-                        var leadStatus = await db.sourcelead.FindAsync(Convert.ToInt32(lead.Id));
-                        leadStatus.asignto = CompaignData.campaignname;
-                        db.sourcelead.Update(leadStatus);
-                        await db.SaveChangesAsync();
+                if(LeadHandler.LeadExist(lead.Id))
+                {
+                    goto repeat;
+                }
+                else
+                {
+                    LeadHandler.SetLeadId(lead.Id);
+                }
+
                 var emailJson = JsonConvert.SerializeObject(new
                     {
                         ListId = "162513",
